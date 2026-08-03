@@ -2,16 +2,16 @@
 const https = require('https');
 const { URL } = require('url');
 
-function postJSON(url, data) {
-  return new Promise((resolve, reject) => {
+函数 postJSON(url, data) {
+  返回 一个新的 Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const body = JSON.stringify(data);
     const options = {
       hostname: urlObj.hostname,
       port: 443,
-      path: urlObj.pathname + urlObj.search,
-      method: 'POST',
-      headers: {
+      路径: urlObj.pathname + urlObj.search,
+      方法: 'POST',
+      请求头: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body)
       }
@@ -34,7 +34,7 @@ function postJSON(url, data) {
 }
 
 function postForm(url, body) {
-  return new Promise((resolve, reject) => {
+  返回 一个新的 Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const options = {
       hostname: urlObj.hostname,
