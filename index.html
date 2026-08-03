@@ -1041,60 +1041,111 @@ function handlePhoto(input) {
   // 显示识别中
   resultBox.style.display = 'block';
   resultBox.style.color = 'var(--color-text-secondary)';
-  resultBox.innerHTML = '⏳ 正在识别中，请稍候...';
+  resultBox.innerHTML = '⏳ 正在处理图片，请稍候...';
   photoBtn.disabled = true;
-  photoBtn.textContent = '识别中...';
+  photoBtn.textContent = '处理中...';
 
+  // 本地文件协议不可用
+  if (location.protocol === 'file:') {
+    resultBox.style.color = 'var(--color-text-secondary)';
+    resultBox.innerHTML = '⚠️ 拍照识别需要部署到线上使用。<br>本地可手动粘贴文字到下方"智能解析"框。';
+    photoBtn.disabled = false;
+    photoBtn.textContent = '📷 拍照识别日期';
+    return;
+  }
+
+  // 压缩图片
   var reader = new FileReader();
   reader.onload = function(e) {
-    var base64 = e.target.result;
-
-    // 判断是否部署在服务器上（非 file:// 协议）
-    if (location.protocol === 'file:') {
-      resultBox.style.color = 'var(--color-text-secondary)';
-      resultBox.innerHTML = '⚠️ 拍照识别需要部署到线上使用。<br>本地可手动粘贴文字到下方"智能解析"框。';
-      photoBtn.disabled = false;
-      photoBtn.textContent = '📷 拍照识别日期';
-      // 同时把图片预览提示用户手动提取
-      return;
-    }
-
-    // 调用 /api/ocr 接口
-    fetch('/api/ocr', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64 })
-    })
-    .then(function(resp) { return resp.json(); })
-    .then(function(data) {
-      photoBtn.disabled = false;
-      photoBtn.textContent = '📷 拍照识别日期';
-
-      if (data.error) {
-        resultBox.style.color = 'var(--color-danger)';
-        resultBox.innerHTML = '❌ ' + data.error;
-        return;
+    var img = new Image();
+    img.onload = function() {
+      // 压缩参数：最大宽度1280px，质量0.8
+      var maxWidth = 1280;
+      var w = img.width;
+      var h = img.height;
+      if (w > maxWidth) {
+        h = Math.round(h * maxWidth / w);
+        w = maxWidth;
       }
 
-      var text = data.text || '';
-      resultBox.style.color = 'var(--color-safe)';
-      resultBox.innerHTML = '✅ 识别结果：<span style="color:#666;">' + escapeHtml(text.replace(/\n/g, ' ')) + '</span>';
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
 
-      // 把识别文字填入智能解析框并触发解析
-      var smartInput = document.getElementById('inputSmartText');
-      smartInput.value = text;
-      parseSmartText();
-    })
-    .catch(function(err) {
+      var base64 = canvas.toDataURL('image/jpeg', 0.85);
+
+      // 检查压缩后大小（base64 ≈ 原始大小*1.33）
+      var sizeMB = Math.round(base64.length * 0.75 / 1024 / 1024 * 10) / 10;
+      if (sizeMB > 3) {
+        // 超过3MB，再压缩一次
+        base64 = canvas.toDataURL('image/jpeg', 0.5);
+      }
+
+      resultBox.innerHTML = '⏳ 正在识别中...';
+
+      fetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64 })
+      })
+      .then(function(resp) {
+        if (!resp.ok) {
+          // 尝试读取错误文本
+          return resp.text().then(function(text) {
+            throw new Error('HTTP ' + resp.status + '：' + (text.substring(0, 60) || '服务不可用'));
+          });
+        }
+        return resp.json();
+      })
+      .then(function(data) {
+        photoBtn.disabled = false;
+        photoBtn.textContent = '📷 拍照识别日期';
+
+        if (data.error) {
+          resultBox.style.color = 'var(--color-danger)';
+          resultBox.innerHTML = '❌ ' + data.error;
+          return;
+        }
+
+        var text = data.text || '';
+        if (!text.trim()) {
+          resultBox.style.color = 'var(--color-warning)';
+          resultBox.innerHTML = '⚠️ 未识别到文字，请尝试调整光线或手动输入';
+          return;
+        }
+
+        resultBox.style.color = 'var(--color-safe)';
+        resultBox.innerHTML = '✅ 识别结果：<span style="color:#666;">' + escapeHtml(text.replace(/\n/g, ' ')) + '</span>';
+
+        var smartInput = document.getElementById('inputSmartText');
+        smartInput.value = text;
+        parseSmartText();
+      })
+      .catch(function(err) {
+        photoBtn.disabled = false;
+        photoBtn.textContent = '📷 拍照识别日期';
+        resultBox.style.color = 'var(--color-danger)';
+        resultBox.innerHTML = '❌ 识别失败：' + escapeHtml(err.message || '未知错误') + '<br>请手动粘贴文字到下方智能解析框';
+      });
+    };
+    img.onerror = function() {
       photoBtn.disabled = false;
       photoBtn.textContent = '📷 拍照识别日期';
       resultBox.style.color = 'var(--color-danger)';
-      resultBox.innerHTML = '❌ 网络请求失败：' + (err.message || '未知错误') + '<br>请检查网络后重试，或手动粘贴文字到下方';
-    });
+      resultBox.innerHTML = '❌ 图片加载失败，请重试';
+    };
+    img.src = e.target.result;
+  };
+  reader.onerror = function() {
+    photoBtn.disabled = false;
+    photoBtn.textContent = '📷 拍照识别日期';
+    resultBox.style.color = 'var(--color-danger)';
+    resultBox.innerHTML = '❌ 读取图片失败，请重试';
   };
   reader.readAsDataURL(file);
 
-  // 清空 input 使同一张图可重复选
   input.value = '';
 }
 
