@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#FF6B6B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="过期预警">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%23FF6B6B'/%3E%3Ctext x='96' y='130' font-size='100' text-anchor='middle' fill='white'%3E%E2%8F%B0%3C/text%3E%3C/svg%3E">
+<title>过期预警 - 家庭物品保质期管理</title>
+<style>
+/* ========== CSS 变量 ========== */
+:root {
+  --color-primary: #FF6B6B;
+  --color-primary-dark: #E55555;
+  --color-primary-light: #FFE8E8;
+  --color-warning: #FF9800;
+  --color-danger: #F44336;
+  --color-safe: #4CAF50;
+  --color-info: #2196F3;
+  --color-text: #333;
+  --color-text-secondary: #888;
+  --color-text-light: #BBB;
+  --color-bg: #f5f5f5;
+  --color-card: #FFF;
+  --color-border: #EEE;
+  --radius: 16px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+/* ========== Reset ========== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 80px;
+}
+
+/* ========== 顶部统计看板 ========== */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+  padding: 20px 16px;
+  color: #fff;
+}
+.stat-item { display: flex; flex-direction: column; align-items: center; flex: 1; cursor: pointer; }
+.stat-num { font-size: 28px; font-weight: bold; }
+.stat-num.warn { color: #FFEB3B; }
+.stat-num.danger { color: #FFCDD2; }
+.stat-label { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+.stat-divider { width: 1px; height: 36px; background: rgba(255,255,255,0.3); }
+
+/* ========== 区块标题 ========== */
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.section-count { font-size: 13px; font-weight: 400; color: var(--color-text-secondary); }
+
+/* ========== 临期预警横滑 ========== */
+.expiring-scroll {
+  overflow-x: auto;
+  padding: 8px 0 12px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.expiring-scroll::-webkit-scrollbar { display: none; }
+.expiring-list { display: flex; padding: 0 12px; gap: 12px; }
+.expiring-card {
+  flex-shrink: 0;
+  width: 150px;
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.expiring-card:active { transform: scale(0.97); }
+.expiring-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.expiring-emoji { font-size: 32px; }
+.expiring-badge { font-size: 11px; color: #fff; padding: 2px 10px; border-radius: 12px; font-weight: 500; }
+.expiring-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px; }
+.expiring-days { font-size: 12px; color: var(--color-text-secondary); }
+
+/* ========== 分类筛选 ========== */
+.category-bar { overflow-x: auto; padding: 12px 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.category-bar::-webkit-scrollbar { display: none; }
+.category-list { display: flex; padding: 0 12px; gap: 8px; }
+.category-item {
+  display: flex; align-items: center; padding: 6px 16px;
+  background: #fff; border-radius: 20px; font-size: 13px; color: #666;
+  flex-shrink: 0; cursor: pointer; transition: all 0.2s; user-select: none;
+}
+.category-item.active { background: var(--color-primary); color: #fff; }
+.cat-icon { margin-right: 4px; font-size: 14px; }
+
+/* ========== 物品列表 ========== */
+.item-list { padding: 0 12px; }
+.item-card {
+  display: flex; align-items: center; background: #fff;
+  border-radius: var(--radius); padding: 14px; margin-bottom: 10px;
+  box-shadow: var(--shadow); cursor: pointer; transition: transform 0.1s;
+}
+.item-card:active { transform: scale(0.98); }
+.item-emoji {
+  width: 44px; height: 44px; line-height: 44px; text-align: center;
+  background: #F8F8F8; border-radius: 12px; font-size: 22px; margin-right: 12px; flex-shrink: 0;
+}
+.item-content { flex: 1; overflow: hidden; }
+.item-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.item-name { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px; }
+.item-info-row { display: flex; align-items: center; justify-content: space-between; }
+.item-info { font-size: 12px; color: var(--color-text-secondary); }
+.item-days { font-size: 12px; font-weight: 500; }
+.item-days.safe { color: var(--color-safe); }
+.item-days.warning { color: var(--color-warning); }
+.item-days.danger { color: var(--color-danger); }
+.item-arrow { font-size: 20px; color: var(--color-text-light); margin-left: 8px; }
+
+/* 标签 */
+.tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.tag-danger { background: #FFEBEE; color: var(--color-danger); }
+.tag-warning { background: #FFF3E0; color: var(--color-warning); }
+.tag-safe { background: #E8F5E9; color: var(--color-safe); }
+.tag-info { background: #E3F2FD; color: var(--color-info); }
+.tag-unknown { background: #F0F0F0; color: var(--color-text-light); }
+
+/* ========== 空状态 ========== */
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; }
+.empty-icon { font-size: 64px; margin-bottom: 12px; }
+.empty-text { color: var(--color-text-light); font-size: 14px; }
+.empty-subtext { font-size: 12px; color: var(--color-text-light); margin-top: 6px; }
+
+/* ========== 悬浮添加按钮 ========== */
+.fab-btn {
+  position: fixed; right: 20px; bottom: 20px;
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(255,107,107,0.4); z-index: 100; cursor: pointer;
+  border: none; transition: transform 0.15s;
+}
+.fab-btn:active { transform: scale(0.9); }
+.fab-icon { font-size: 28px; color: #fff; font-weight: 300; line-height: 1; }
+
+/* ========== 弹窗 Modal ========== */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 200;
+  display: none; align-items: flex-end; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal-content {
+  background: #fff; border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+  padding: 20px; animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.modal-title { font-size: 18px; font-weight: 600; }
+.modal-close { font-size: 24px; color: var(--color-text-light); cursor: pointer; background: none; border: none; padding: 0 4px; }
+
+/* ========== 表单 ========== */
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; display: block; }
+.form-label .required { color: var(--color-primary); }
+.form-input, .form-select, .form-textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--color-border);
+  border-radius: 10px; font-size: 15px; color: var(--color-text);
+  background: #fff; outline: none; transition: border-color 0.2s;
+  font-family: inherit;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--color-primary); }
+.form-textarea { min-height: 60px; resize: vertical; }
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+.form-hint { font-size: 11px; color: var(--color-text-light); margin-top: 4px; }
+
+/* 拍照区 */
+.photo-btn {
+  width: 100%; border: 2px dashed var(--color-border); border-radius: var(--radius);
+  padding: 24px; text-align: center; cursor: pointer; transition: border-color 0.2s; background: #FAFAFA;
+}
+.photo-btn:hover { border-color: var(--color-primary); }
+.photo-icon { font-size: 36px; margin-bottom: 8px; }
+.photo-text { font-size: 15px; color: var(--color-text); font-weight: 500; }
+.photo-hint { font-size: 12px; color: var(--color-text-light); margin-top: 4px; }
+
+
+
+/* 按钮 */
+.btn { padding: 10px 20px; border: none; border-radius: 24px; font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; font-family: inherit; }
+.btn:active { opacity: 0.7; }
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-secondary { background: var(--color-primary-light); color: var(--color-primary); }
+.btn-danger { background: #FFEBEE; color: var(--color-danger); }
+.btn-block { width: 100%; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-actions .btn { flex: 1; }
+
+/* ========== 详情面板 ========== */
+.detail-status-card {
+  border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+}
+.detail-status-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.detail-emoji { font-size: 40px; }
+.detail-name { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.detail-days { font-size: 14px; color: var(--color-text-secondary); }
+.detail-info-card { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.detail-info-row { display: flex; padding: 10px 0; border-bottom: 1px solid #F0F0F0; }
+.detail-info-row:last-child { border-bottom: none; }
+.detail-info-label { width: 80px; font-size: 13px; color: var(--color-text-secondary); flex-shrink: 0; }
+.detail-info-value { flex: 1; font-size: 14px; color: var(--color-text); }
+
+/* AI建议 */
+.advice-card { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.advice-header { display: flex; align-items: center; margin-bottom: 12px; }
+.advice-icon { font-size: 24px; margin-right: 8px; }
+.advice-title { font-size: 15px; font-weight: 500; flex: 1; }
+.advice-content { background: #F5F9FF; border-radius: 10px; padding: 14px; font-size: 13px; color: #555; line-height: 1.8; }
+
+/* ========== Loading ========== */
+.spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { text-align: center; padding: 20px; color: var(--color-text-secondary); font-size: 13px; }
+
+/* 快捷保质期按钮 */
+.quick-btn {
+
+/* 搜索栏 */
+.search-bar { padding: 8px 12px; }
+.search-input {
+  width: 100%; padding: 10px 14px 10px 36px; border: 1px solid var(--color-border);
+  border-radius: 12px; font-size: 14px; background: #fff; outline: none;
+  transition: border-color 0.2s; font-family: inherit; box-sizing: border-box;
+}
+.search-input:focus { border-color: var(--color-primary); }
+.search-wrap { position: relative; }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--color-text-light); pointer-events: none; }
+
+/* 排序栏 */
+.sort-bar { display: flex; align-items: center; gap: 4px; padding: 0 12px 8px; font-size: 12px; color: var(--color-text-secondary); }
+.sort-label { flex-shrink: 0; }
+.sort-btn {
+  padding: 4px 10px; border: 1px solid var(--color-border); border-radius: 12px;
+  font-size: 12px; color: var(--color-text-secondary); background: #fff;
+  cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.sort-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+/* 快捷保质期按钮（原样式继续） */
+.quick-btn {
+  padding: 6px 14px; border: 1px solid var(--color-border); border-radius: 16px;
+  font-size: 13px; color: var(--color-text-secondary); background: #fff;
+  cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.quick-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.quick-btn:active { background: var(--color-primary-light); }
+
+/* ========== 响应式 ========== */
+@media (min-width: 600px) {
+  .modal-overlay { align-items: center; }
+  .modal-content { border-radius: 20px; }
+  body { max-width: 500px; margin: 0 auto; box-shadow: 0 0 40px rgba(0,0,0,0.05); min-height: 100vh; }
+  .fab-btn { right: calc(50% - 250px + 20px); }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== 顶部工具栏 ========== -->
+<div style="display:flex;justify-content:flex-end;gap:6px;padding:8px 16px 0;">
+  <button class="quick-btn" onclick="exportData()">导出备份</button>
+  <button class="quick-btn" onclick="document.getElementById('importFile').click()">导入恢复</button>
+  <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
+</div>
+
+<!-- ========== 顶部统计看板 ========== -->
+<div class="stats-bar">
+  <div class="stat-item" onclick="filterByStatus('all')">
+    <div class="stat-num" id="statTotal">0</div>
+    <div class="stat-label">总物品</div>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat-item" onclick="filterByStatus('expiring')">
+    <div class="stat-num warn" id="statExpiring">0</div>
+    <div class="stat-label">临期</div>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat-item" onclick="filterByStatus('expired')">
+    <div class="stat-num danger" id="statExpired">0</div>
+    <div class="stat-label">已过期</div>
+  </div>
+</div>
+
+<!-- ========== 临期预警区 ========== -->
+<div id="expiringSection" style="display:none;">
+  <div class="section-title">
+    <span>⚠️ 临期预警</span>
+    <span class="section-count" id="expiringCount">0件</span>
+  </div>
+  <div class="expiring-scroll">
+    <div class="expiring-list" id="expiringList"></div>
+  </div>
+</div>
+
+<!-- ========== 分类筛选 ========== -->
+<div class="category-bar">
+  <div class="category-list" id="categoryBar"></div>
+</div>
+
+<!-- ========== 搜索 + 排序 ========== -->
+<div class="search-bar" id="searchBar" style="display:none;">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" class="search-input" id="searchInput" placeholder="搜索物品名称..." oninput="renderItemList()">
+  </div>
+</div>
+<div class="sort-bar" id="sortBar" style="display:none;">
+  <span class="sort-label">排序：</span>
+  <button class="sort-btn active" data-sort="expire" onclick="setSort('expire')">过期日期</button>
+  <button class="sort-btn" data-sort="name" onclick="setSort('name')">名称</button>
+  <button class="sort-btn" data-sort="time" onclick="setSort('time')">添加时间</button>
+</div>
+
+<!-- ========== 物品列表 ========== -->
+<div class="item-list" id="itemList"></div>
+
+<!-- ========== 悬浮添加按钮 ========== -->
+<button class="fab-btn" onclick="openAddModal()">
+  <span class="fab-icon">+</span>
+</button>
+
+<!-- ========== 添加/编辑 弹窗 ========== -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title" id="addModalTitle">添加物品</div>
+      <button class="modal-close" onclick="closeModal('addModal')">&times;</button>
+    </div>
+
+    <!-- 拍照识别 -->
+    <div style="background:#FFF5F5;border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;margin-bottom:8px;">
+        <span style="font-size:18px;margin-right:6px;">📷</span>
+        <span style="font-size:14px;font-weight:500;">拍照识别</span>
+      </div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:8px;">拍一下包装上的日期信息，自动识别并填入（需联网）</div>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;" onchange="handlePhoto(this)">
+      <button type="button" class="btn btn-primary btn-block" onclick="document.getElementById('photoInput').click()" id="photoBtn">
+        📷 拍照识别日期
+      </button>
+      <div id="ocrResult" style="display:none;margin-top:8px;font-size:12px;"></div>
+    </div>
+
+    <!-- 智能粘贴解析 -->
+    <div style="background:#F0F8FF;border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;margin-bottom:8px;">
+        <span style="font-size:18px;margin-right:6px;">📋</span>
+        <span style="font-size:14px;font-weight:500;">智能解析</span>
+      </div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:8px;">把包装上印的日期文字粘贴到下面，自动提取日期</div>
+      <textarea class="form-textarea" id="inputSmartText" placeholder="例如：生产日期2024.03.15，保质期12个月&#10;或：20240315  18M&#10;或：EXP: 2025-09-15" style="font-size:13px;min-height:50px;" oninput="parseSmartText()"></textarea>
+      <div id="smartParseResult" style="display:none;margin-top:8px;font-size:12px;color:var(--color-safe);"></div>
+    </div>
+
+    <!-- 表单 -->
+    <div class="form-group">
+      <label class="form-label">物品名称 <span class="required">*</span></label>
+      <input type="text" class="form-input" id="inputName" placeholder="如：雅诗兰黛精华液">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">分类</label>
+      <select class="form-select" id="inputCategory">
+        <option value="skincare">🧴 护肤品</option>
+        <option value="medicine">💊 药品</option>
+        <option value="seasoning">🧂 调料</option>
+        <option value="snack">🍪 零食</option>
+        <option value="other">📦 其他</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">生产日期</label>
+        <input type="date" class="form-input" id="inputProduceDate" oninput="autoCalcExpire()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">保质期</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="number" class="form-input" id="inputShelfLife" placeholder="如365" style="flex:1;" oninput="autoCalcExpire()">
+          <span style="font-size:13px;color:var(--color-text-secondary);white-space:nowrap;">天</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 快捷保质期按钮 -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
+      <button type="button" class="quick-btn" onclick="setQuickShelfLife(30)">1个月</button>
+      <button type="button" class="quick-btn" onclick="setQuickShelfLife(90)">3个月</button>
+      <button type="button" class="quick-btn" onclick="setQuickShelfLife(180)">6个月</button>
+      <button type="button" class="quick-btn" onclick="setQuickShelfLife(365)">1年</button>
+      <button type="button" class="quick-btn" onclick="setQuickShelfLife(540)">1.5年</button>
+      <button type="button" class="quick-btn" onclick="setQuickShelfLife(730)">2年</button>
+      <button type="button" class="quick-btn" onclick="setQuickShelfLife(1095)">3年</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">过期日期 <span class="required">*</span></label>
+      <input type="date" class="form-input" id="inputExpireDate">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">备注</label>
+      <textarea class="form-textarea" id="inputRemark" placeholder="可选：存放位置、注意事项等" maxlength="200"></textarea>
+    </div>
+
+    <!-- AI推荐使用期限 -->
+    <div style="background:#F5F9FF;border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;margin-bottom:8px;">
+        <span style="font-size:20px;margin-right:8px;">🤖</span>
+        <span style="font-size:14px;font-weight:500;">AI推荐使用期限</span>
+      </div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:8px;">没有标准保质期？点击按钮根据物品类型自动推荐</div>
+      <button class="btn btn-secondary btn-block" onclick="recommendShelfLife()">获取AI建议</button>
+      <div id="aiSuggestionBox" style="display:none;margin-top:10px;background:#fff;border-radius:8px;padding:12px;font-size:13px;color:#555;line-height:1.6;"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('addModal')">取消</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveItem()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 详情弹窗 ========== -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-content" id="detailContent"></div>
+</div>
+
+<script>
+// =============================================
+// 全局状态
+// =============================================
+const STORAGE_KEY = 'expire_alert_items';
+const CATEGORIES = [
+  { key: 'all', name: '全部', icon: '📋' },
+  { key: 'skincare', name: '护肤品', icon: '🧴' },
+  { key: 'medicine', name: '药品', icon: '💊' },
+  { key: 'seasoning', name: '调料', icon: '🧂' },
+  { key: 'snack', name: '零食', icon: '🍪' },
+  { key: 'other', name: '其他', icon: '📦' }
+];
+const CATEGORY_MAP = {};
+CATEGORIES.forEach(c => { CATEGORY_MAP[c.key] = c; });
+
+let items = [];
+let currentFilter = 'all';
+let currentStatusFilter = null; // 'expiring' | 'expired' | null
+let editingId = null;
+let currentSort = 'expire'; // 'expire' | 'name' | 'time'
+
+// =============================================
+// 数据持久化
+// =============================================
+function loadItems() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    items = data ? JSON.parse(data) : [];
+  } catch(e) {
+    console.error('加载数据失败', e);
+    items = [];
+  }
+}
+
+function saveItems() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch(e) {
+    console.error('localStorage 保存失败', e);
+  }
+  // 同时写入 IndexedDB（比 localStorage 更持久，file:// 下也更可靠）
+  try {
+    indexedDBBackup();
+  } catch(e) {
+    console.error('IndexedDB 备份失败', e);
+  }
+}
+
+// =============================================
+// IndexedDB 备份（比 localStorage 更持久，file:// 下也更可靠）
+// =============================================
+let db = null;
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('expire_alert_db', 1);
+    req.onupgradeneeded = function(e) {
+      const database = e.target.result;
+      if (!database.objectStoreNames.contains('items')) {
+        database.createObjectStore('items', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = function(e) { db = e.target.result; resolve(db); };
+    req.onerror = function(e) { reject(e.target.error); };
+  });
+}
+
+function indexedDBBackup() {
+  if (!db) { initDB().then(() => indexedDBBackup()); return; }
+  const tx = db.transaction(['items'], 'readwrite');
+  const store = tx.objectStore('items');
+  store.clear();
+  items.forEach(item => store.put(item));
+}
+
+function indexedDBLoad() {
+  return new Promise((resolve, reject) => {
+    if (!db) { initDB().then(() => indexedDBLoad().then(resolve).catch(reject)); return; }
+    const tx = db.transaction(['items'], 'readonly');
+    const store = tx.objectStore('items');
+    const req = store.getAll();
+    req.onsuccess = function(e) { resolve(e.target.result || []); };
+    req.onerror = function(e) { reject(e.target.error); };
+  });
+}
+
+// =============================================
+// 导出备份 / 导入恢复
+// =============================================
+function exportData() {
+  if (items.length === 0) { alert('没有数据可导出'); return; }
+  const data = JSON.stringify(items, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const now = new Date();
+  const dateStr = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+  a.download = '过期预警备份_' + dateStr + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('备份文件已下载，请妥善保存');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) { alert('文件格式错误：不是有效的备份文件'); return; }
+      if (items.length > 0) {
+        if (!confirm('当前已有 ' + items.length + ' 条数据，导入将合并（重复的会覆盖）。继续？')) return;
+        // 合并：以 id 为准去重
+        const idSet = new Set(items.map(i => i.id));
+        data.forEach(d => {
+          if (idSet.has(d.id)) {
+            const idx = items.findIndex(i => i.id === d.id);
+            items[idx] = d;
+          } else {
+            items.push(d);
+          }
+        });
+      } else {
+        items = data;
+      }
+      saveItems();
+      indexedDBBackup();
+      renderAll();
+      showToast('成功导入 ' + data.length + ' 条数据');
+    } catch(err) {
+      alert('导入失败：文件格式错误 - ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// =============================================
+// 日期工具
+// =============================================
+
+// 安全地解析 YYYY-MM-DD 字符串为 Date 对象（避免时区偏移）
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  }
+  return new Date(dateStr);
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = parseDate(dateStr);
+  if (!d || isNaN(d.getTime())) return dateStr;
+  return d.getFullYear() + '/' + (d.getMonth()+1) + '/' + d.getDate();
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function daysBetween(d1, d2) {
+  const diff = parseDate(d2).getTime() - parseDate(d1).getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+// =============================================
+// 状态计算
+// =============================================
+function calculateStatus(item) {
+  if (!item.expireDate) {
+    return { level: 'unknown', text: '未知', color: '#BBB', daysLeft: null };
+  }
+  const today = todayStr();
+  const daysLeft = daysBetween(today, item.expireDate);
+
+  if (daysLeft < 0) {
+    return { level: 'expired', text: '已过期', color: '#F44336', daysLeft: daysLeft };
+  } else if (daysLeft <= 3) {
+    return { level: 'expiring', text: '即将过期', color: '#F44336', daysLeft: daysLeft };
+  } else if (item.produceDate) {
+    const totalDays = daysBetween(item.produceDate, item.expireDate);
+    if (totalDays > 0 && daysLeft / totalDays <= 0.2) {
+      return { level: 'expiring', text: '临期', color: '#FF9800', daysLeft: daysLeft };
+    }
+  }
+  return { level: 'safe', text: '安全', color: '#4CAF50', daysLeft: daysLeft };
+}
+
+function getDaysLeftText(status) {
+  if (status.daysLeft === null) return '';
+  if (status.daysLeft < 0) return '已过期' + (-status.daysLeft) + '天';
+  if (status.daysLeft === 0) return '今天到期';
+  return '剩余' + status.daysLeft + '天';
+}
+
+// =============================================
+// 渲染：统计看板
+// =============================================
+function renderStats() {
+  let expiringCount = 0, expiredCount = 0;
+  items.forEach(item => {
+    const s = calculateStatus(item);
+    if (s.level === 'expiring') expiringCount++;
+    if (s.level === 'expired') expiredCount++;
+  });
+  document.getElementById('statTotal').textContent = items.length;
+  document.getElementById('statExpiring').textContent = expiringCount;
+  document.getElementById('statExpired').textContent = expiredCount;
+}
+
+// =============================================
+// 渲染：临期预警区
+// =============================================
+function renderExpiringSection() {
+  const expiringItems = items.filter(item => {
+    const s = calculateStatus(item);
+    return s.level === 'expiring' || s.level === 'expired';
+  }).sort((a, b) => {
+    return calculateStatus(a).daysLeft - calculateStatus(b).daysLeft;
+  });
+
+  const section = document.getElementById('expiringSection');
+  const list = document.getElementById('expiringList');
+  const countEl = document.getElementById('expiringCount');
+
+  if (expiringItems.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  countEl.textContent = expiringItems.length + '件';
+
+  list.innerHTML = expiringItems.map(item => {
+    const s = calculateStatus(item);
+    const cat = CATEGORY_MAP[item.category] || CATEGORY_MAP.other;
+    return '<div class="expiring-card" onclick="openDetail(\'' + item.id + '\')">' +
+      '<div class="expiring-card-top">' +
+        '<span class="expiring-emoji">' + cat.icon + '</span>' +
+        '<span class="expiring-badge" style="background:' + s.color + ';">' + s.text + '</span>' +
+      '</div>' +
+      '<div class="expiring-name">' + escapeHtml(item.name) + '</div>' +
+      '<div class="expiring-days">' + getDaysLeftText(s) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// =============================================
+// 渲染：分类筛选栏
+// =============================================
+function renderCategoryBar() {
+  const bar = document.getElementById('categoryBar');
+  bar.innerHTML = CATEGORIES.map(c =>
+    '<div class="category-item ' + (currentFilter === c.key ? 'active' : '') + '" onclick="setFilter(\'' + c.key + '\')">' +
+      '<span class="cat-icon">' + c.icon + '</span>' +
+      '<span>' + c.name + '</span>' +
+    '</div>'
+  ).join('');
+}
+
+// =============================================
+// 渲染：物品列表
+// =============================================
+function renderItemList() {
+  const list = document.getElementById('itemList');
+
+  let filtered = items;
+  if (currentStatusFilter === 'expiring') {
+    filtered = items.filter(i => calculateStatus(i).level === 'expiring');
+  } else if (currentStatusFilter === 'expired') {
+    filtered = items.filter(i => calculateStatus(i).level === 'expired');
+  } else if (currentFilter !== 'all') {
+    filtered = items.filter(i => i.category === currentFilter);
+  }
+
+  // 搜索过滤
+  var searchInput = document.getElementById('searchInput');
+  if (searchInput && searchInput.value.trim()) {
+    var q = searchInput.value.trim().toLowerCase();
+    filtered = filtered.filter(i => i.name && i.name.toLowerCase().indexOf(q) !== -1);
+  }
+
+  // 排序
+  filtered = filtered.slice().sort((a, b) => {
+    if (currentSort === 'name') {
+      return (a.name || '').localeCompare(b.name || '', 'zh');
+    } else if (currentSort === 'time') {
+      var ta = a.createTime ? new Date(a.createTime).getTime() : 0;
+      var tb = b.createTime ? new Date(b.createTime).getTime() : 0;
+      return tb - ta; // 最新的排前面
+    } else {
+      // 默认按过期日期
+      if (!a.expireDate) return 1;
+      if (!b.expireDate) return -1;
+      return parseDate(a.expireDate) - parseDate(b.expireDate);
+    }
+  });
+
+  if (filtered.length === 0) {
+    if (items.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-text">还没有添加物品</div><div class="empty-subtext">点击右下角 + 添加第一个物品吧</div></div>';
+    } else {
+      var searchInput = document.getElementById('searchInput');
+      var hasSearch = searchInput && searchInput.value.trim();
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">' + (hasSearch ? '🔍' : '📦') + '</div><div class="empty-text">' + (hasSearch ? '没有找到匹配的物品' : '该分类下暂无物品') + '</div></div>';
+    }
+    return;
+  }
+
+  list.innerHTML = filtered.map(item => {
+    const s = calculateStatus(item);
+    const cat = CATEGORY_MAP[item.category] || CATEGORY_MAP.other;
+    let tagClass = 'tag-safe';
+    if (s.level === 'expired') tagClass = 'tag-danger';
+    else if (s.level === 'expiring') tagClass = 'tag-warning';
+    else if (s.level === 'unknown') tagClass = 'tag-unknown';
+
+    let daysClass = 'safe';
+    if (s.level === 'expired') daysClass = 'danger';
+    else if (s.level === 'expiring') daysClass = 'warning';
+
+    const expireText = item.expireDate ? '到期: ' + formatDate(item.expireDate) : '无固定保质期';
+    const daysText = s.daysLeft !== null ? getDaysLeftText(s) : '';
+
+    return '<div class="item-card" onclick="openDetail(\'' + item.id + '\')">' +
+      '<div class="item-emoji">' + cat.icon + '</div>' +
+      '<div class="item-content">' +
+        '<div class="item-name-row">' +
+          '<span class="item-name">' + escapeHtml(item.name) + '</span>' +
+          '<span class="tag ' + tagClass + '">' + s.text + '</span>' +
+        '</div>' +
+        '<div class="item-info-row">' +
+          '<span class="item-info">' + expireText + '</span>' +
+          '<span class="item-days ' + daysClass + '">' + daysText + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<span class="item-arrow">›</span>' +
+    '</div>';
+  }).join('');
+}
+
+// =============================================
+// 渲染：全部刷新
+// =============================================
+function renderAll() {
+  renderStats();
+  renderExpiringSection();
+  renderCategoryBar();
+  updateSearchBarVisibility();
+  renderItemList();
+}
+
+// =============================================
+// 筛选
+// =============================================
+function setFilter(key) {
+  currentFilter = key;
+  currentStatusFilter = null;
+  renderAll();
+}
+
+function filterByStatus(status) {
+  if (status === 'all') {
+    currentStatusFilter = null;
+  } else {
+    currentStatusFilter = status;
+  }
+  currentFilter = 'all';
+  renderAll();
+  // 滚动到列表
+  document.getElementById('itemList').scrollIntoView({ behavior: 'smooth' });
+}
+
+function setSort(sort) {
+  currentSort = sort;
+  // 更新按钮高亮
+  document.querySelectorAll('.sort-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-sort') === sort);
+  });
+  renderItemList();
+}
+
+function updateSearchBarVisibility() {
+  var hasItems = items.length > 0;
+  document.getElementById('searchBar').style.display = hasItems ? 'block' : 'none';
+  document.getElementById('sortBar').style.display = hasItems ? 'flex' : 'none';
+}
+
+// =============================================
+// 添加/编辑 物品
+// =============================================
+function openAddModal() {
+  editingId = null;
+  document.getElementById('addModalTitle').textContent = '添加物品';
+  document.getElementById('inputName').value = '';
+  document.getElementById('inputCategory').value = 'skincare';
+  document.getElementById('inputProduceDate').value = '';
+  document.getElementById('inputShelfLife').value = '';
+  document.getElementById('inputExpireDate').value = '';
+  document.getElementById('inputRemark').value = '';
+  document.getElementById('inputSmartText').value = '';
+  document.getElementById('smartParseResult').style.display = 'none';
+  document.getElementById('smartParseResult').innerHTML = '';
+  document.getElementById('ocrResult').style.display = 'none';
+  document.getElementById('ocrResult').innerHTML = '';
+  document.getElementById('aiSuggestionBox').style.display = 'none';
+  document.getElementById('saveBtn').disabled = false;
+  document.getElementById('saveBtn').textContent = '保存';
+  document.getElementById('addModal').classList.add('active');
+}
+
+function openEditModal(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+
+  editingId = id;
+  document.getElementById('addModalTitle').textContent = '编辑物品';
+  document.getElementById('inputName').value = item.name || '';
+  document.getElementById('inputCategory').value = item.category || 'other';
+  document.getElementById('inputProduceDate').value = item.produceDate || '';
+  document.getElementById('inputShelfLife').value = '';
+  document.getElementById('inputExpireDate').value = item.expireDate || '';
+  document.getElementById('inputRemark').value = item.remark || '';
+  document.getElementById('inputSmartText').value = '';
+  document.getElementById('smartParseResult').style.display = 'none';
+  document.getElementById('smartParseResult').innerHTML = '';
+  document.getElementById('ocrResult').style.display = 'none';
+  document.getElementById('ocrResult').innerHTML = '';
+  document.getElementById('aiSuggestionBox').style.display = 'none';
+  document.getElementById('saveBtn').disabled = false;
+  document.getElementById('saveBtn').textContent = '保存修改';
+  document.getElementById('addModal').classList.add('active');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+function autoCalcExpire() {
+  const produceDate = document.getElementById('inputProduceDate').value;
+  const shelfLife = parseInt(document.getElementById('inputShelfLife').value);
+  if (produceDate && shelfLife > 0) {
+    const d = parseDate(produceDate);
+    d.setDate(d.getDate() + shelfLife);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    document.getElementById('inputExpireDate').value = y + '-' + m + '-' + day;
+  }
+}
+
+function saveItem() {
+  const name = document.getElementById('inputName').value.trim();
+  const category = document.getElementById('inputCategory').value;
+  const produceDate = document.getElementById('inputProduceDate').value;
+  const expireDate = document.getElementById('inputExpireDate').value;
+  const remark = document.getElementById('inputRemark').value.trim();
+
+  if (!name) { alert('请输入物品名称'); return; }
+  if (!expireDate) { alert('请选择过期日期'); return; }
+
+  const cat = CATEGORY_MAP[category] || CATEGORY_MAP.other;
+
+  if (editingId) {
+    // 编辑
+    const idx = items.findIndex(i => i.id === editingId);
+    if (idx >= 0) {
+      items[idx].name = name;
+      items[idx].category = category;
+      items[idx].categoryName = cat.name;
+      items[idx].categoryIcon = cat.icon;
+      items[idx].produceDate = produceDate;
+      items[idx].expireDate = expireDate;
+      items[idx].remark = remark;
+      items[idx].updateTime = new Date().toISOString();
+    }
+  } else {
+    // 新增
+    const newItem = {
+      id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      name: name,
+      category: category,
+      categoryName: cat.name,
+      categoryIcon: cat.icon,
+      produceDate: produceDate,
+      expireDate: expireDate,
+      remark: remark,
+      createTime: new Date().toISOString()
+    };
+    items.push(newItem);
+  }
+
+  saveItems();
+  closeModal('addModal');
+  renderAll();
+  showToast(editingId ? '修改成功' : '保存成功');
+}
+
+// =============================================
+// 删除物品
+// =============================================
+function deleteItem(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+
+  if (confirm('确定要删除「' + item.name + '」吗？此操作不可恢复。')) {
+    items = items.filter(i => i.id !== id);
+    saveItems();
+    closeModal('detailModal');
+    renderAll();
+    showToast('已删除');
+  }
+}
+
+// =============================================
+// 详情弹窗
+// =============================================
+function openDetail(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+
+  const s = calculateStatus(item);
+  const cat = CATEGORY_MAP[item.category] || CATEGORY_MAP.other;
+  const advice = getAdvice(item, s);
+
+  let statusBg = s.color + '22';
+  let produceText = item.produceDate ? formatDate(item.produceDate) : '未记录';
+  let expireText = item.expireDate ? formatDate(item.expireDate) : '未记录';
+
+  let adviceHtml = '';
+  if (advice) {
+    adviceHtml = '<div class="advice-card">' +
+      '<div class="advice-header"><span class="advice-icon">🤖</span><span class="advice-title">AI消耗建议</span></div>' +
+      '<div class="advice-content">' + advice + '</div>' +
+    '</div>';
+  }
+
+  document.getElementById('detailContent').innerHTML =
+    '<div class="modal-header">' +
+      '<div class="modal-title">物品详情</div>' +
+      '<button class="modal-close" onclick="closeModal(\'detailModal\')">&times;</button>' +
+    '</div>' +
+    '<div class="detail-status-card" style="background:linear-gradient(135deg,' + statusBg + ' 0%, ' + s.color + '11 100%); border-left:4px solid ' + s.color + ';">' +
+      '<div class="detail-status-header">' +
+        '<span class="detail-emoji">' + cat.icon + '</span>' +
+        '<span class="tag ' + (s.level === 'expired' ? 'tag-danger' : s.level === 'expiring' ? 'tag-warning' : s.level === 'safe' ? 'tag-safe' : 'tag-unknown') + '" style="background:' + s.color + ';color:#fff;">' + s.text + '</span>' +
+      '</div>' +
+      '<div class="detail-name">' + escapeHtml(item.name) + '</div>' +
+      '<div class="detail-days">' + getDaysLeftText(s) + '</div>' +
+    '</div>' +
+    '<div class="detail-info-card">' +
+      '<div class="detail-info-row"><span class="detail-info-label">分类</span><span class="detail-info-value">' + cat.icon + ' ' + cat.name + '</span></div>' +
+      '<div class="detail-info-row"><span class="detail-info-label">生产日期</span><span class="detail-info-value">' + produceText + '</span></div>' +
+      '<div class="detail-info-row"><span class="detail-info-label">过期日期</span><span class="detail-info-value">' + expireText + '</span></div>' +
+      (item.remark ? '<div class="detail-info-row"><span class="detail-info-label">备注</span><span class="detail-info-value">' + escapeHtml(item.remark) + '</span></div>' : '') +
+    '</div>' +
+    adviceHtml +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-secondary" onclick="closeModal(\'detailModal\');openEditModal(\'' + id + '\')">编辑</button>' +
+      '<button class="btn btn-danger" onclick="deleteItem(\'' + id + '\')">删除</button>' +
+    '</div>';
+
+  document.getElementById('detailModal').classList.add('active');
+}
+
+// =============================================
+// 拍照OCR识别
+// =============================================
+function handlePhoto(input) {
+  var file = input.files[0];
+  if (!file) return;
+
+  var resultBox = document.getElementById('ocrResult');
+  var photoBtn = document.getElementById('photoBtn');
+
+  // 显示识别中
+  resultBox.style.display = 'block';
+  resultBox.style.color = 'var(--color-text-secondary)';
+  resultBox.innerHTML = '⏳ 正在识别中，请稍候...';
+  photoBtn.disabled = true;
+  photoBtn.textContent = '识别中...';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result;
+
+    // 判断是否部署在服务器上（非 file:// 协议）
+    if (location.protocol === 'file:') {
+      resultBox.style.color = 'var(--color-text-secondary)';
+      resultBox.innerHTML = '⚠️ 拍照识别需要部署到线上使用。<br>本地可手动粘贴文字到下方"智能解析"框。';
+      photoBtn.disabled = false;
+      photoBtn.textContent = '📷 拍照识别日期';
+      // 同时把图片预览提示用户手动提取
+      return;
+    }
+
+    // 调用 /api/ocr 接口
+    fetch('/api/ocr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64 })
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      photoBtn.disabled = false;
+      photoBtn.textContent = '📷 拍照识别日期';
+
+      if (data.error) {
+        resultBox.style.color = 'var(--color-danger)';
+        resultBox.innerHTML = '❌ ' + data.error;
+        return;
+      }
+
+      var text = data.text || '';
+      resultBox.style.color = 'var(--color-safe)';
+      resultBox.innerHTML = '✅ 识别结果：<span style="color:#666;">' + escapeHtml(text.replace(/\n/g, ' ')) + '</span>';
+
+      // 把识别文字填入智能解析框并触发解析
+      var smartInput = document.getElementById('inputSmartText');
+      smartInput.value = text;
+      parseSmartText();
+    })
+    .catch(function(err) {
+      photoBtn.disabled = false;
+      photoBtn.textContent = '📷 拍照识别日期';
+      resultBox.style.color = 'var(--color-danger)';
+      resultBox.innerHTML = '❌ 网络请求失败：' + (err.message || '未知错误') + '<br>请检查网络后重试，或手动粘贴文字到下方';
+    });
+  };
+  reader.readAsDataURL(file);
+
+  // 清空 input 使同一张图可重复选
+  input.value = '';
+}
+
+// =============================================
+// 智能文本解析：从粘贴文本中提取日期和保质期
+// =============================================
+function parseSmartText() {
+  const text = document.getElementById('inputSmartText').value.trim();
+  const resultBox = document.getElementById('smartParseResult');
+
+  if (!text) {
+    resultBox.style.display = 'none';
+    return;
+  }
+
+  const allText = text.replace(/\s+/g, ' ');
+  let filled = [];
+
+  // ===== 提取日期 =====
+  // 匹配各种日期格式
+  const datePattern = /(\d{4})\s*[-\/年.]\s*(\d{1,2})\s*[-\/月.]\s*(\d{1,2})\s*日?/g;
+  const compactDatePattern = /(\d{4})(\d{2})(\d{2})/g;
+  const dateCandidates = [];
+
+  let m;
+  while ((m = datePattern.exec(allText)) !== null) {
+    const mon = parseInt(m[2]), day = parseInt(m[3]);
+    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+      dateCandidates.push({
+        dateStr: m[1] + '-' + String(mon).padStart(2,'0') + '-' + String(day).padStart(2,'0'),
+        context: allText.substring(Math.max(0, m.index - 12), m.index + m[0].length + 12).toLowerCase(),
+        position: m.index
+      });
+    }
+  }
+  while ((m = compactDatePattern.exec(allText)) !== null) {
+    const mon = parseInt(m[2]), day = parseInt(m[3]);
+    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+      const isDup = dateCandidates.some(d => d.dateStr === m[1]+'-'+m[2]+'-'+m[3]);
+      if (!isDup) {
+        dateCandidates.push({
+          dateStr: m[1] + '-' + m[2] + '-' + m[3],
+          context: allText.substring(Math.max(0, m.index - 12), m.index + m[0].length + 12).toLowerCase(),
+          position: m.index
+        });
+      }
+    }
+  }
+
+  let produceDate = '', expireDate = '';
+
+  // 通过关键字判断
+  const expireKw = ['exp', 'expire', 'expiry', 'use by', 'best before', 'bb', 'valid', '过期', '有效', '保质', '限期', '使用', '至', '到期'];
+  const produceKw = ['mfg', 'mfd', 'manufactur', 'prod', '生产', '制造', '出厂'];
+
+  for (const dc of dateCandidates) {
+    if (!expireDate && expireKw.some(kw => dc.context.includes(kw))) expireDate = dc.dateStr;
+    if (!produceDate && produceKw.some(kw => dc.context.includes(kw))) produceDate = dc.dateStr;
+  }
+
+  // 智能推断：2个日期时早的=生产、晚的过期；1个日期时看未来/过去
+  if (dateCandidates.length >= 2 && (!produceDate || !expireDate)) {
+    const sorted = dateCandidates.slice().sort((a, b) => a.position - b.position);
+    if (!produceDate) produceDate = sorted[0].dateStr;
+    if (!expireDate) expireDate = sorted[sorted.length - 1].dateStr;
+  } else if (dateCandidates.length === 1 && !produceDate && !expireDate) {
+    const dc = dateCandidates[0];
+    const today = new Date();
+    const dcDate = new Date(parseInt(dc.dateStr.slice(0,4)), parseInt(dc.dateStr.slice(5,7))-1, parseInt(dc.dateStr.slice(8,10)));
+    if (dcDate > today) expireDate = dc.dateStr;
+    else produceDate = dc.dateStr;
+  }
+
+  // ===== 提取保质期 =====
+  let shelfLifeDays = null;
+  const shelfPatterns = [
+    { regex: /(\d+)\s*个?\s*月/, unit: 'month' },
+    { regex: /(\d+)\s*months?\b/i, unit: 'month' },
+    { regex: /(\d+)\s*天/, unit: 'day' },
+    { regex: /(\d+)\s*days?\b/i, unit: 'day' },
+    { regex: /(\d+)\s*年/, unit: 'year' },
+    { regex: /(\d+)\s*years?\b/i, unit: 'year' },
+    { regex: /(\d+)\s*M\b/, unit: 'month' },
+    { regex: /(\d+)\s*D\b/, unit: 'day' }
+  ];
+  for (const p of shelfPatterns) {
+    const m2 = allText.match(p.regex);
+    if (m2) {
+      const num = parseInt(m2[1]);
+      if ((p.unit === 'month' && num >= 1 && num <= 60) ||
+          (p.unit === 'day' && num >= 1 && num <= 2000) ||
+          (p.unit === 'year' && num >= 1 && num <= 10)) {
+        shelfLifeDays = p.unit === 'year' ? num * 365 : p.unit === 'month' ? num * 30 : num;
+        break;
+      }
+    }
+  }
+
+  // ===== 填充表单 =====
+  if (produceDate) {
+    document.getElementById('inputProduceDate').value = produceDate;
+    filled.push('生产日期');
+  }
+  if (shelfLifeDays) {
+    document.getElementById('inputShelfLife').value = shelfLifeDays;
+    filled.push('保质期' + shelfLifeDays + '天');
+  }
+  if (produceDate && shelfLifeDays && !expireDate) {
+    autoCalcExpire();
+    filled.push('过期日期(自动计算)');
+  } else if (expireDate) {
+    document.getElementById('inputExpireDate').value = expireDate;
+    filled.push('过期日期');
+  }
+
+  // 显示结果
+  if (filled.length > 0) {
+    resultBox.style.display = 'block';
+    resultBox.style.color = 'var(--color-safe)';
+    resultBox.innerHTML = '✅ 已自动填充：' + filled.join('、');
+  } else {
+    resultBox.style.display = 'block';
+    resultBox.style.color = 'var(--color-text-secondary)';
+    resultBox.innerHTML = '未识别到日期信息，请手动填写';
+  }
+}
+
+// =============================================
+// 快捷保质期按钮
+// =============================================
+function setQuickShelfLife(days) {
+  document.getElementById('inputShelfLife').value = days;
+  autoCalcExpire();
+}
+
+// =============================================
+// 规则引擎：AI推荐
+// =============================================
+
+// 无保质期物品推荐使用期限（天数）
+const SHELF_LIFE_RECOMMENDATIONS = {
+  skincare: [
+    { keywords: ['精华', '原液'], days: 180, reason: '精华类产品开封后建议6个月内用完，避免活性成分氧化失效' },
+    { keywords: ['面霜', '乳液', '霜'], days: 365, reason: '面霜乳液开封后建议12个月内用完' },
+    { keywords: ['洁面', '洗面', ' cleanser'], days: 365, reason: '洁面产品开封后建议12个月内用完' },
+    { keywords: ['爽肤水', '化妆水', '水'], days: 365, reason: '化妆水开封后建议12个月内用完' },
+    { keywords: ['面膜'], days: 365, reason: '面膜开封后建议12个月内用完' },
+    { keywords: ['防晒'], days: 180, reason: '防晒产品开封后建议6个月内用完，防晒效果会随时间降低' },
+    { keywords: ['眼霜'], days: 180, reason: '眼霜开封后建议6个月内用完，眼周肌肤较敏感' },
+    { keywords: ['口红', '唇膏', '唇彩'], days: 365, reason: '唇部产品开封后建议12个月内用完' },
+    { keywords: ['香水'], days: 730, reason: '香水开封后可保存2年左右' },
+    { default: true, days: 365, reason: '护肤品开封后一般建议12个月内用完' }
+  ],
+  medicine: [
+    { keywords: ['眼药水', '滴眼液'], days: 30, reason: '眼药水开封后建议1个月内用完，避免细菌污染' },
+    { keywords: ['糖浆', '口服液'], days: 30, reason: '糖浆类开封后建议1个月内用完' },
+    { keywords: ['软膏', '药膏', '凝胶'], days: 90, reason: '外用药膏开封后建议3个月内用完' },
+    { keywords: ['胶囊', '片剂', '药片'], days: 180, reason: '口服药开封后建议6个月内用完' },
+    { default: true, days: 180, reason: '药品开封后一般建议6个月内用完' }
+  ],
+  seasoning: [
+    { keywords: ['酱油', '醋', '料酒'], days: 180, reason: '液体调料开封后建议6个月内用完' },
+    { keywords: ['蚝油'], days: 90, reason: '蚝油开封后建议3个月内冷藏用完' },
+    { keywords: ['辣椒酱', '豆瓣酱', '酱'], days: 180, reason: '酱类调料开封后建议6个月内用完' },
+    { keywords: ['盐', '糖'], days: 730, reason: '盐糖类可长期保存，但建议2年内用完以保证最佳风味' },
+    { keywords: ['花椒', '八角', '桂皮', '香料', '粉'], days: 365, reason: '干香料开封后建议12个月内用完，风味会逐渐降低' },
+    { keywords: ['油'], days: 180, reason: '食用油开封后建议6个月内用完' },
+    { default: true, days: 180, reason: '调料开封后一般建议6个月内用完' }
+  ],
+  snack: [
+    { keywords: ['薯片', '饼干', '膨化'], days: 7, reason: '膨化食品开封后建议7天内吃完以保持口感' },
+    { keywords: ['坚果', '瓜子', '花生'], days: 30, reason: '坚果类开封后建议30天内吃完，避免氧化变质' },
+    { keywords: ['糖果', '巧克力'], days: 90, reason: '糖果巧克力开封后建议90天内吃完' },
+    { keywords: ['果干', '葡萄干'], days: 30, reason: '果干类开封后建议30天内吃完' },
+    { keywords: ['蛋糕', '面包'], days: 3, reason: '烘焙食品开封后建议3天内吃完' },
+    { default: true, days: 14, reason: '零食开封后一般建议尽快食用' }
+  ],
+  other: [
+    { default: true, days: 180, reason: '建议在6个月内使用完毕' }
+  ]
+};
+
+// 菜谱推荐
+const RECIPE_DATABASE = [
+  { keywords: ['鸡蛋', '蛋'], recipes: ['番茄炒蛋', '蒸蛋羹', '韭菜炒蛋', '蛋花汤'] },
+  { keywords: ['番茄', '西红柿'], recipes: ['番茄炒蛋', '番茄蛋汤', '番茄牛腩', '番茄意面'] },
+  { keywords: ['牛奶', '鲜奶'], recipes: ['牛奶布丁', '香蕉奶昔', '奶油蘑菇汤', '牛奶馒头'] },
+  { keywords: ['面粉', '高筋', '低筋'], recipes: ['手工面条', '鸡蛋饼', '馒头', '饺子皮'] },
+  { keywords: ['鸡肉', '鸡翅', '鸡腿'], recipes: ['可乐鸡翅', '黄焖鸡', '口水鸡', '咖喱鸡'] },
+  { keywords: ['猪肉', '五花肉'], recipes: ['红烧肉', '回锅肉', '糖醋排骨', '肉末茄子'] },
+  { keywords: ['牛肉'], recipes: ['番茄牛腩', '水煮牛肉', '咖喱牛肉', '青椒炒牛肉'] },
+  { keywords: ['虾', '虾仁'], recipes: ['白灼虾', '虾仁炒蛋', '蒜蓉虾', '虾仁豆腐'] },
+  { keywords: ['豆腐'], recipes: ['麻婆豆腐', '小葱拌豆腐', '豆腐汤', '红烧豆腐'] },
+  { keywords: ['土豆', '马铃薯'], recipes: ['酸辣土豆丝', '土豆炖牛肉', '土豆泥', '干锅土豆片'] },
+  { keywords: ['白菜', '大白菜'], recipes: ['醋溜白菜', '白菜炖豆腐', '白菜猪肉饺子', '辣白菜'] },
+  { keywords: ['胡萝卜'], recipes: ['胡萝卜炒肉', '胡萝卜炖牛腩', '胡萝卜汁', '胡萝卜蛋糕'] },
+  { keywords: ['洋葱'], recipes: ['洋葱炒蛋', '洋葱炒牛肉', '洋葱汤', '炸洋葱圈'] },
+  { keywords: ['青椒', '辣椒'], recipes: ['青椒炒肉丝', '虎皮青椒', '青椒炒蛋', '剁椒鱼头'] },
+  { keywords: ['黄瓜'], recipes: ['凉拌黄瓜', '黄瓜炒蛋', '拍黄瓜', '黄瓜沙拉'] },
+  { keywords: ['茄子'], recipes: ['鱼香茄子', '蒜蓉茄子', '红烧茄子', '肉末茄子'] },
+  { keywords: ['蘑菇', '香菇', '金针菇'], recipes: ['蘑菇汤', '蚝油蘑菇', '蘑菇炒肉', '蒜蓉金针菇'] },
+  { keywords: ['腊肠', '香肠'], recipes: ['腊肠炒饭', '腊味煲仔饭', '香肠炒荷兰豆', '蒸腊肠'] },
+  { keywords: ['酱油'], recipes: ['酱油炒饭', '酱油鸡', '红烧菜肴调味'] },
+  { keywords: ['蚝油'], recipes: ['蚝油生菜', '蚝油牛肉', '蚝油香菇'] },
+  { keywords: ['面条', '挂面'], recipes: ['葱油拌面', '阳春面', '打卤面', '炒面'] },
+  { keywords: ['米饭', '大米', '糙米'], recipes: ['蛋炒饭', '煲仔饭', '饭团', '米粥'] },
+  { keywords: ['奶油', '淡奶油'], recipes: ['奶油蘑菇汤', '奶油蛋糕', '白酱意面'] },
+  { keywords: ['巧克力'], recipes: ['巧克力熔岩蛋糕', '热可可', '巧克力饼干'] },
+  { keywords: ['黄油'], recipes: ['黄油饼干', '黄油煎牛排', '蒜香面包'] }
+];
+
+function recommendShelfLife() {
+  const name = document.getElementById('inputName').value.trim();
+  const category = document.getElementById('inputCategory').value;
+
+  if (!name) {
+    alert('请先输入物品名称');
+    return;
+  }
+
+  const recs = SHELF_LIFE_RECOMMENDATIONS[category] || SHELF_LIFE_RECOMMENDATIONS.other;
+  let matched = null;
+
+  for (const rec of recs) {
+    if (rec.default) { matched = rec; continue; }
+    for (const kw of rec.keywords) {
+      if (name.toLowerCase().includes(kw.toLowerCase())) {
+        matched = rec;
+        break;
+      }
+    }
+    if (matched && !matched.default) break;
+  }
+
+  if (!matched) matched = recs.find(r => r.default) || { days: 180, reason: '建议尽快使用' };
+
+  const box = document.getElementById('aiSuggestionBox');
+  box.style.display = 'block';
+  box.innerHTML = '<strong>建议在 ' + matched.days + ' 天内使用完毕</strong><br>' + matched.reason +
+    '<br><br><button class="btn btn-secondary btn-block" style="margin-top:8px;" onclick="applyShelfLife(' + matched.days + ')">一键填入</button>';
+}
+
+function applyShelfLife(days) {
+  const today = new Date();
+  const expire = new Date();
+  expire.setDate(expire.getDate() + days);
+
+  const todayFormat = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  const expireFormat = expire.getFullYear() + '-' + String(expire.getMonth()+1).padStart(2,'0') + '-' + String(expire.getDate()).padStart(2,'0');
+
+  document.getElementById('inputProduceDate').value = todayFormat;
+  document.getElementById('inputShelfLife').value = days;
+  document.getElementById('inputExpireDate').value = expireFormat;
+
+  showToast('已自动填充');
+}
+
+function getAdvice(item, status) {
+  if (status.level === 'safe') return '';
+
+  const cat = item.category;
+  const isExpired = status.level === 'expired';
+  const daysLeft = status.daysLeft;
+
+  if (cat === 'seasoning' || cat === 'snack') {
+    // 食材类：推荐菜谱
+    const recipes = matchRecipes(item.name);
+    if (isExpired) {
+      let advice = '⚠️ 该物品已过期' + (-daysLeft) + '天。\n\n';
+      if (cat === 'snack') {
+        advice += '零食类食品过期后口感和安全性都会降低，建议不要再食用。\n\n';
+        advice += '处理建议：\n';
+        advice += '- 未开封的可检查是否有异味、变色，少量试吃判断\n';
+        advice += '- 已开封的建议直接丢弃\n';
+        advice += '- 可堆肥处理（如果是有机食品）';
+      } else {
+        advice += '调料过期后风味会降低，可能滋生霉菌。\n\n';
+        advice += '处理建议：\n';
+        advice += '- 轻微过期（1周内）且无异味异色的，少量使用风险较低\n';
+        advice += '- 明显过期或有异味变色的，建议丢弃\n';
+        advice += '- 可用于清洁（如醋、小苏打等）';
+      }
+      return advice;
+    }
+
+    let advice = '⏰ 该物品即将过期，剩余' + daysLeft + '天。建议尽快消耗！\n\n';
+    if (recipes.length > 0) {
+      advice += '🍳 推荐菜谱：\n';
+      recipes.slice(0, 4).forEach((r, i) => {
+        advice += (i+1) + '. ' + r + '\n';
+      });
+      advice += '\n💡 建议：可以一次多做几份，冷冻保存或分享给邻居。';
+    } else {
+      advice += '建议尽快使用完毕。可以用来做炒菜、炖汤或与其他食材搭配消耗。';
+    }
+    return advice;
+
+  } else if (cat === 'skincare') {
+    // 护肤品
+    if (isExpired) {
+      let advice = '⚠️ 该护肤品已过期' + (-daysLeft) + '天。\n\n';
+      advice += '过期护肤品可能滋生细菌、活性成分失效，不建议继续用于面部。\n\n';
+      advice += '替代用途：\n';
+      advice += '- 可以用来擦拭皮具（皮鞋、皮包）\n';
+      advice += '- 涂抹在手脚等不敏感部位（无异味变色时）\n';
+      advice += '- 乳液面霜可做护手霜或身体乳\n';
+      advice += '- 清洁化妆刷和美容工具';
+      return advice;
+    }
+    let advice = '⏰ 该护肤品即将过期，剩余' + daysLeft + '天。建议尽快用完！\n\n';
+    advice += '加快消耗建议：\n';
+    advice += '- 每次使用时适当增加用量\n';
+    advice += '- 涂抹范围扩展到颈部、手部\n';
+    advice += '- 精华类可早晚使用\n';
+    advice += '- 面霜可用作身体乳或护手霜\n';
+    advice += '- 与朋友或家人分享使用';
+    return advice;
+
+  } else if (cat === 'medicine') {
+    // 药品
+    if (isExpired) {
+      let advice = '⚠️ 该药品已过期' + (-daysLeft) + '天。\n\n';
+      advice += '过期药品药效降低，可能产生有害物质，不建议继续服用。\n\n';
+      advice += '安全处理方式：\n';
+      advice += '- 不要随意丢弃或冲入下水道\n';
+      advice += '- 将药片从包装取出，混入咖啡渣或猫砂后密封丢弃\n';
+      advice += '- 液体药物可用纸巾吸附后丢弃\n';
+      advice += '- 部分药店有过期药品回收服务';
+      return advice;
+    }
+    let advice = '⏰ 该药品即将过期，剩余' + daysLeft + '天。\n\n';
+    advice += '使用建议：\n';
+    advice += '- 如有对应症状可正常使用\n';
+    advice += '- 注意用量，不要因即将过期而加大剂量\n';
+    advice += '- 如无使用需求，到期后安全处理';
+    return advice;
+
+  } else {
+    // 其他
+    if (isExpired) {
+      return '⚠️ 该物品已过期' + (-daysLeft) + '天。建议检查物品状态，如有变质迹象请及时丢弃。';
+    }
+    return '⏰ 该物品即将过期，剩余' + daysLeft + '天。建议尽快使用完毕。';
+  }
+}
+
+function matchRecipes(name) {
+  if (!name) return [];
+  const matched = [];
+  for (const entry of RECIPE_DATABASE) {
+    for (const kw of entry.keywords) {
+      if (name.includes(kw)) {
+        matched.push(...entry.recipes);
+        break;
+      }
+    }
+  }
+  // 去重
+  return [...new Set(matched)];
+}
+
+// =============================================
+// 工具函数
+// =============================================
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function showToast(msg) {
+  // 简易toast
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.75);color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;z-index:9999;pointer-events:none;transition:opacity 0.3s;';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; }, 1500);
+  setTimeout(() => { toast.remove(); }, 1800);
+}
+
+// =============================================
+// 初始化
+// =============================================
+loadItems();
+renderAll();
+
+// 异步从 IndexedDB 加载备份（如果 localStorage 为空则恢复）
+if (items.length === 0) {
+  initDB().then(() => {
+    return indexedDBLoad();
+  }).then(function(dbItems) {
+    if (dbItems && dbItems.length > 0) {
+      items = dbItems;
+      renderAll();
+      console.log('从 IndexedDB 恢复了 ' + items.length + ' 条数据');
+    }
+  }).catch(function(err) {
+    console.log('IndexedDB 不可用，仅使用 localStorage');
+  });
+}
+
+// 点击遮罩关闭弹窗
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === this) {
+      this.classList.remove('active');
+    }
+  });
+});
+
+// PWA Service Worker 注册
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').then(function(reg) {
+      console.log('PWA 已启用，可离线使用');
+    }).catch(function(err) {
+      console.log('Service Worker 注册失败:', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
