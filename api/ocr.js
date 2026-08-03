@@ -2,24 +2,25 @@
 // 前端 POST 图片 base64 -> 本函数转发百度OCR -> 返回识别文字
 
 export default async function handler(req, res) {
-  // CORS
+  // 跨域
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    返回 res.状态(200).结束();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+  如果 (req.方法 !== 'POST') {
+    返回 res.状态(405).json({ 错误: '不允许的请求方法' });
   }
 
-  const apiKey = process.env.BAIDU_OCR_API_KEY;
-  const secretKey = process.env.BAIDU_OCR_SECRET_KEY;
+   const apiKey = 进程.环境.百度OCR API密钥;
+  const secretKey = 进程.环境.baidu_ocr_secret_key;
 
-  if (!apiKey || !secretKey || apiKey === '你的API_Key') {
-    return res.status(500).json({ error: 'OCR服务未配置，请在Vercel环境变量中设置 BAIDU_OCR_API_KEY 和 BAIDU_OCR_SECRET_KEY' });
+  如果 (!apiKey || !secretKey) {
+    return res.status(500).json({ error: 'OCR服务未配置，请在Vercel环境变量中设置 baidu_ocr_api_key 和 baidu_ocr_secret_key' });
+  }
   }
 
   try {
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
     const tokenData = await tokenResp.json();
 
     if (!tokenData.access_token) {
-      return res.status(500).json({ error: '获取百度token失败：' + JSON.stringify(tokenData) });
+      返回 res.状态(500).json({ 错误: '获取百度token失败：' + JSON.字符串化(tokenData) });
     }
 
     const accessToken = tokenData.access_token;
