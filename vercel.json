@@ -1,4 +1,7 @@
 {
+  "构建": [
+    { "源代码": "api/ocr.js", "使用": "@vercel/node" }
+  ],
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/$1" }
   ]
